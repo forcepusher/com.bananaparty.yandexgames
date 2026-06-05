@@ -33,7 +33,7 @@ const yandexGamesLibrary = {
 
           // The { scopes: false } ensures personal data permission request window won't pop up,
           const playerAccountInitializationPromise = sdk.getPlayer({ scopes: false }).then(function (playerAccount) {
-            if (playerAccount.getMode() !== 'lite') {
+            if (playerAccount.isAuthorized()) {
               yandexGames.isAuthorized = true;
             }
 
@@ -41,15 +41,14 @@ const yandexGamesLibrary = {
             yandexGames.playerAccount = playerAccount;
           }).catch(function () { throw new Error('PlayerAccount failed to initialize.'); });
 
-          const leaderboardInitializationPromise = sdk.getLeaderboards().then(function (leaderboard) {
-            yandexGames.leaderboard = leaderboard;
-          }).catch(function () { throw new Error('Leaderboard failed to initialize.'); });
+          // ysdk.getLeaderboards() is deprecated. Leaderboard methods are accessed directly via sdk.leaderboards.
+          yandexGames.leaderboard = sdk.leaderboards;
 
           const billingInitializationPromise = sdk.getPayments({ signed: true }).then(function (billing) {
             yandexGames.billing = billing;
           }).catch(function () { throw new Error('Billing failed to initialize.'); });
 
-          Promise.allSettled([leaderboardInitializationPromise, playerAccountInitializationPromise, billingInitializationPromise]).then(function () {
+          Promise.allSettled([playerAccountInitializationPromise, billingInitializationPromise]).then(function () {
             yandexGames.isInitialized = true;
             {{{ makeDynCall('v', 'successCallbackPtr') }}}();
           });
@@ -135,7 +134,7 @@ const yandexGamesLibrary = {
         }
 
         yandexGames.sdk.getPlayer({ scopes: false }).then(function (playerAccount) {
-          if (playerAccount.getMode() !== 'lite') {
+          if (playerAccount.isAuthorized()) {
             yandexGames.isAuthorized = true;
             yandexGames.playerAccount = playerAccount;
             {{{ makeDynCall('v', 'successCallbackPtr') }}}();
@@ -296,7 +295,7 @@ const yandexGamesLibrary = {
         return;
       }
 
-      yandexGames.leaderboard.setLeaderboardScore(leaderboardName, score, extraData).then(function () {
+      yandexGames.leaderboard.setScore(leaderboardName, score, extraData).then(function () {
         {{{ makeDynCall('v', 'successCallbackPtr') }}}();
       }).catch(function (error) {
         yandexGames.invokeErrorCallback(error, errorCallbackPtr);
@@ -309,7 +308,7 @@ const yandexGamesLibrary = {
         return;
       }
 
-      yandexGames.leaderboard.getLeaderboardEntries(leaderboardName, {
+      yandexGames.leaderboard.getEntries(leaderboardName, {
         includeUser: includeSelf, quantityAround: competingPlayersCount, quantityTop: topPlayersCount
       }).then(function (response) {
         response.entries.forEach(function(entry) {
@@ -331,7 +330,7 @@ const yandexGamesLibrary = {
         return;
       }
 
-      yandexGames.leaderboard.getLeaderboardPlayerEntry(leaderboardName).then(function (response) {
+      yandexGames.leaderboard.getPlayerEntry(leaderboardName).then(function (response) {
         response.player.profilePicture = response.player.getAvatarSrc({ size: pictureSize });
 
         const entryJson = JSON.stringify(response);
